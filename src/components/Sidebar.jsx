@@ -10,9 +10,8 @@ import {
   Divider,
   Box,
 } from "@mui/material";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom"; // Importamos o useLocation
 
-// Importação dos Ícones (O "tempero" visual do CRM)
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
@@ -20,34 +19,34 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 
 function Sidebar({ drawerWidth }) {
-  // Lista de itens do menu para deixar o código limpo (DRY - Don't Repeat Yourself)
+  const location = useLocation(); // Esse hook nos dá o "endereço" atual da URL
+
   const menuItems = [
-    { text: "Dashboard", icon: <DashboardIcon color="primary" />, path: "/" },
+    { text: "Dashboard", icon: <DashboardIcon />, path: "/" },
     { text: "Clientes", icon: <PeopleIcon />, path: "/clientes" },
     { text: "Vendas", icon: <PointOfSaleIcon />, path: "/vendas" },
     {
       text: "Automação Whats",
-      icon: <WhatsAppIcon sx={{ color: "#25D366" }} />,
+      icon: <WhatsAppIcon />,
       path: "/whats",
     },
   ];
 
   return (
     <Drawer
-      variant="permanent" // "Permanent" faz ela ficar sempre visível no Desktop
+      variant="permanent"
       sx={{
         width: drawerWidth,
         flexShrink: 0,
         [`& .MuiDrawer-paper`]: {
           width: drawerWidth,
           boxSizing: "border-box",
-          backgroundColor: "#ffffff", // Fundo branco limpo igual sua foto
-          borderRight: "1px solid #e0e0e0", // Linha sutil separando do conteúdo
+          backgroundColor: "#ffffff",
+          borderRight: "1px solid #e0e0e0",
         },
       }}
     >
       <Toolbar>
-        {/* LOGO DO SEU CRM */}
         <Typography
           variant="h6"
           noWrap
@@ -60,39 +59,67 @@ function Sidebar({ drawerWidth }) {
 
       <Box sx={{ overflow: "auto", mt: 2 }}>
         <List>
-          {menuItems.map((item) => (
-            <ListItem key={item.text} disablePadding>
-              {/* O segredo está aqui: o component={Link} e o to={item.path} */}
-              <ListItemButton
-                component={Link}
-                to={item.path}
-                sx={{ py: 1.5, "&:hover": { backgroundColor: "#f0f7ff" } }}
-              >
-                <ListItemIcon sx={{ minWidth: 45, color: "primary.main" }}>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.text}
-                  primaryTypographyProps={{ fontSize: "14px", fontWeight: 500 }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
+          {menuItems.map((item) => {
+            // Lógica de verificação: se o path do item for igual ao da URL
+            const isActive = location.pathname === item.path;
+
+            return (
+              <ListItem key={item.text} disablePadding>
+                <ListItemButton
+                  component={Link}
+                  to={item.path}
+                  selected={isActive} // Avisa ao MUI que este item está selecionado
+                  sx={{
+                    py: 1.5,
+                    // Estilo quando está ATIVO
+                    backgroundColor: isActive ? "rgba(0, 110, 220, 0.08)" : "transparent",
+                    color: isActive ? "primary.main" : "text.secondary",
+                    borderRight: isActive ? "4px solid #006edc" : "none",
+                    "&:hover": { 
+                      backgroundColor: isActive ? "rgba(0, 110, 220, 0.12)" : "#f0f7ff" 
+                    },
+                  }}
+                >
+                  <ListItemIcon 
+                    sx={{ 
+                      minWidth: 45, 
+                      color: isActive ? "primary.main" : "inherit" 
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    primaryTypographyProps={{ 
+                      fontSize: "14px", 
+                      fontWeight: isActive ? 700 : 500 
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
         </List>
 
         <Divider sx={{ my: 2 }} />
 
-        {/* ÁREA DE CONFIGURAÇÕES (Separada por uma linha) */}
-
         <List>
           <ListItem disablePadding>
-            <ListItemButton>
+            {/* Podemos aplicar a mesma lógica aqui caso crie a rota /config */}
+            <ListItemButton 
+              component={Link} 
+              to="/config"
+              selected={location.pathname === "/config"}
+            >
               <ListItemIcon>
-                <SettingsIcon />
+                <SettingsIcon color={location.pathname === "/config" ? "primary" : "inherit"} />
               </ListItemIcon>
               <ListItemText
                 primary="Configurações"
-                primaryTypographyProps={{ fontSize: "14px" }}
+                primaryTypographyProps={{ 
+                  fontSize: "14px",
+                  fontWeight: location.pathname === "/config" ? 700 : 400
+                }}
               />
             </ListItemButton>
           </ListItem>
