@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // 1. useEffect importado
 import { 
   Typography, Box, Paper, Button, Modal, 
   TextField, Stack, Table, TableBody, 
@@ -16,40 +16,46 @@ const modalStyle = {
 
 function Clientes() {
   const [open, setOpen] = useState(false);
-  const [listaClientes, setListaClientes] = useState([
-    { id: 1, nome: 'Gabriel Marques', email: 'gabriel@teste.com', telefone: '5511999999999' }
-  ]);
+
+  // 2. INICIALIZAÇÃO: Busca no LocalStorage ou começa vazio
+  const [listaClientes, setListaClientes] = useState(() => {
+    const dadosSalvos = localStorage.getItem('crm_clientes');
+    return dadosSalvos ? JSON.parse(dadosSalvos) : [
+      { id: 1, nome: 'Gabriel Marques', email: 'gabriel@teste.com', telefone: '5511999999999' }
+    ];
+  });
+
+  // 3. PERSISTÊNCIA: Salva sempre que a lista mudar
+  useEffect(() => {
+    localStorage.setItem('crm_clientes', JSON.stringify(listaClientes));
+  }, [listaClientes]);
 
   // Estados do Formulário
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [editandoId, setEditandoId] = useState(null); // NULL = Novo, ID = Editando
+  const [editandoId, setEditandoId] = useState(null);
 
   const handleOpen = () => {
-    setEditandoId(null); // Reseta para modo "Novo"
+    setEditandoId(null);
     setNome(''); setEmail(''); setTelefone('');
     setOpen(true);
   };
 
   const handleClose = () => setOpen(false);
 
-  // --- FUNÇÃO PARA SALVAR (ADICIONAR OU EDITAR) ---
   const handleSalvar = () => {
     if (editandoId) {
-      // MODO EDIÇÃO: Mapeia a lista e substitui o item com o ID correspondente
       setListaClientes(listaClientes.map(c => 
         c.id === editandoId ? { ...c, nome, email, telefone: telefone.replace(/\D/g, '') } : c
       ));
     } else {
-      // MODO CRIAÇÃO: Adiciona novo item
       const novoCliente = { id: Date.now(), nome, email, telefone: telefone.replace(/\D/g, '') };
       setListaClientes([...listaClientes, novoCliente]);
     }
     handleClose();
   };
 
-  // --- FUNÇÃO PARA PREPARAR EDIÇÃO ---
   const prepararEdicao = (cliente) => {
     setEditandoId(cliente.id);
     setNome(cliente.nome);
@@ -58,7 +64,6 @@ function Clientes() {
     setOpen(true);
   };
 
-  // --- FUNÇÃO PARA EXCLUIR ---
   const excluirCliente = (id) => {
     if (window.confirm("Tem certeza que deseja excluir este cliente?")) {
       setListaClientes(listaClientes.filter(c => c.id !== id));
@@ -90,17 +95,12 @@ function Clientes() {
                 <TableCell>{cliente.telefone}</TableCell>
                 <TableCell align="center">
                   <Stack direction="row" spacing={1} justifyContent="center">
-                    {/* WHATSAPP */}
                     <IconButton color="success" component="a" href={`https://wa.me/${cliente.telefone}`} target="_blank">
                       <WhatsAppIcon />
                     </IconButton>
-                    
-                    {/* EDITAR */}
                     <IconButton color="primary" onClick={() => prepararEdicao(cliente)}>
                       <EditIcon />
                     </IconButton>
-
-                    {/* EXCLUIR */}
                     <IconButton color="error" onClick={() => excluirCliente(cliente.id)}>
                       <DeleteIcon />
                     </IconButton>
@@ -112,7 +112,6 @@ function Clientes() {
         </Table>
       </TableContainer>
 
-      {/* MODAL ÚNICO PARA NOVO/EDITAR */}
       <Modal open={open} onClose={handleClose}>
         <Box sx={modalStyle}>
           <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>

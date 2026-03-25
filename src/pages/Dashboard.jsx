@@ -1,98 +1,96 @@
-import { useState } from 'react'; // Passo 1: Importar o useState
-import { Grid, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Button, Modal, Box, TextField, Stack } from "@mui/material";
+import { useState, useEffect } from 'react'; // 1. Adicionamos useEffect
+import { 
+  Grid, Typography, Box, Table, TableBody, 
+  TableCell, TableContainer, TableHead, TableRow, Paper, Chip 
+} from "@mui/material";
 import StatCard from "../components/StatCard";
-import { dashboardStats } from "../data/mockData";
-import AddIcon from '@mui/icons-material/Add';
-
-const rows = [
-  { id: 1, nome: "Transportadora Silva", email: "contato@silva.com", status: "Ativo", valor: "R$ 1.200,00" },
-  { id: 2, nome: "Logística Express", email: "adm@express.log", status: "Pendente", valor: "R$ 850,00" },
-  { id: 3, nome: "Auto Peças Hulk", email: "vendas@hulk.com.br", status: "Inativo", valor: "R$ 3.400,00" },
-];
-
-const modalStyle = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: 400,
-  bgcolor: 'background.paper',
-  boxShadow: 24,
-  p: 4,
-  borderRadius: 3,
-};
+import PeopleIcon from "@mui/icons-material/People";
+import PaidIcon from "@mui/icons-material/Paid";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 
 function Dashboard() {
-  // Passo 2: Criar o estado para o Modal
-  const [open, setOpen] = useState(false);
+  // 2. ESTADO INICIAL: Busca os dados REAIS do LocalStorage
+  const [listaClientes, setListaClientes] = useState([]);
+  const [listaVendas, setListaVendas] = useState([]);
 
-  // Funções para manipular o estado
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  useEffect(() => {
+    // Busca clientes
+    const clientesSalvos = localStorage.getItem('crm_clientes');
+    if (clientesSalvos) setListaClientes(JSON.parse(clientesSalvos));
+
+    // Busca vendas (já deixamos preparado para quando fizermos o LocalStorage de vendas)
+    const vendasSalvas = localStorage.getItem('crm_vendas');
+    if (vendasSalvas) setListaVendas(JSON.parse(vendasSalvas));
+  }, []);
+
+  // 3. CÁLCULOS (Agora baseados nos dados reais!)
+  const totalClientes = listaClientes.length;
+  
+  const faturamentoTotal = listaVendas
+    .filter((venda) => venda.status === "Fechado")
+    .reduce((acc, venda) => acc + Number(venda.valor), 0);
+
+  const vendasEmAberto = listaVendas.filter(
+    (venda) => venda.status !== "Fechado"
+  ).length;
+
+  const cardsDinamicos = [
+    { id: 1, title: "Total de Clientes", value: totalClientes, icon: <PeopleIcon />, color: "#1976d2" },
+    { id: 2, title: "Faturamento (Fechado)", value: `R$ ${faturamentoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: <PaidIcon />, color: "#2e7d32" },
+    { id: 3, title: "Negociações em Aberto", value: vendasEmAberto, icon: <TrendingUpIcon />, color: "#ed6c02" },
+  ];
 
   return (
-    <>
-      {/* HEADER DO DASHBOARD COM O BOTÃO NOVO */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Dashboard Inicial 🚀
-        </Typography>
-        
-        
-      </Box>
+    <Box>
+      <Typography variant="h4" sx={{ mb: 4, fontWeight: 700 }}>
+        Dashboard Inicial 🚀
+      </Typography>
 
-      <Grid container spacing={3}>
-        {dashboardStats.map((stat) => (
-          <Grid item xs={12} sm={6} md={4} key={stat.id}>
-            <StatCard
-              title={stat.title}
-              value={stat.value}
-              iconName={stat.icon === "people" ? "People" : stat.icon === "paid" ? "Paid" : "TrendingUp"}
-              color={stat.color}
-            />
+      <Grid container spacing={3} sx={{ mb: 5 }}>
+        {cardsDinamicos.map((card) => (
+          <Grid item xs={12} sm={6} md={4} key={card.id}>
+            <StatCard title={card.title} value={card.value} icon={card.icon} color={card.color} />
           </Grid>
         ))}
       </Grid>
 
-      <Typography variant="h6" sx={{ mt: 5, mb: 2, fontWeight: 600 }}>
-        Clientes Recentes
+      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+        Últimas Movimentações
       </Typography>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 3, elevation: 0, border: "1px solid #e0e0e0" }}>
+      <TableContainer component={Paper} sx={{ borderRadius: 3, border: "1px solid #e0e0e0" }}>
         <Table>
           <TableHead sx={{ bgcolor: "#f8f9fa" }}>
             <TableRow>
               <TableCell sx={{ fontWeight: "bold" }}>Cliente</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>E-mail</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
               <TableCell sx={{ fontWeight: "bold" }} align="right">Valor</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row) => (
+            {/* Exibindo os últimos 5 clientes cadastrados */}
+            {listaClientes.slice(0, 5).map((row) => (
               <TableRow key={row.id}>
                 <TableCell>{row.nome}</TableCell>
-                <TableCell>{row.email}</TableCell>
                 <TableCell>
-                  <Chip
-                    label={row.status}
-                    size="small"
-                    sx={{
-                      fontWeight: "bold",
-                      backgroundColor: row.status === "Ativo" ? "#2e7d32" : row.status === "Pendente" ? "#ed6c02" : "#d32f2f",
-                      color: "#fff",
-                    }}
+                  <Chip 
+                    label="Ativo" // Por enquanto fixo, ou você pode adicionar 'status' no cadastro
+                    size="small" 
+                    sx={{ bgcolor: "#2e7d32", color: "#fff", fontWeight: 'bold' }} 
                   />
                 </TableCell>
-                <TableCell align="right">{row.valor}</TableCell>
+                <TableCell align="right">--</TableCell>
               </TableRow>
             ))}
+            {listaClientes.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={3} align="center">Nenhum dado encontrado</TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
-
-           
-    </>
+    </Box>
   );
 }
 
