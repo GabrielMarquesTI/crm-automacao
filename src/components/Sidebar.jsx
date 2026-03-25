@@ -17,6 +17,7 @@ import PeopleIcon from "@mui/icons-material/People";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import SettingsIcon from "@mui/icons-material/Settings";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import PollIcon from '@mui/icons-material/Poll';
 
 function Sidebar({ drawerWidth }) {
   const location = useLocation(); // Esse hook nos dá o "endereço" atual da URL
@@ -25,11 +26,9 @@ function Sidebar({ drawerWidth }) {
     { text: "Dashboard", icon: <DashboardIcon />, path: "/" },
     { text: "Clientes", icon: <PeopleIcon />, path: "/clientes" },
     { text: "Vendas", icon: <PointOfSaleIcon />, path: "/vendas" },
-    {
-      text: "Automação Whats",
-      icon: <WhatsAppIcon />,
-      path: "/whats",
-    },
+    {text: "Metricas", icon: < PollIcon />, path: "/metricas"},
+    { text: "Automação Whats", icon: <WhatsAppIcon />, path: "/whats"},
+    
   ];
 
   return (

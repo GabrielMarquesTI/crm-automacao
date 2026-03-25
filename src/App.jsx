@@ -5,6 +5,9 @@ import Clientes from './pages/Clientes';
 import Vendas from './pages/Vendas';
 import AutomacaoWhats from './pages/AutomacaoWhats';
 import Configuracoes from './pages/Configuracoes';
+import ClienteDetalhes from './pages/ClienteDetalhes';
+import Metricas from './pages/Metricas';
+
 
 function App() {
   return (
@@ -17,6 +20,8 @@ function App() {
         <Route path="/vendas" element={<Vendas />} />
         <Route path="/whats" element={<AutomacaoWhats />} />
         <Route path="/config" element={<Configuracoes />} />
+        <Route path="/clientes/:id" element={<ClienteDetalhes />} />
+        <Route path="/metricas" element={<Metricas />} />
       </Routes>
     </Layout>
   );
