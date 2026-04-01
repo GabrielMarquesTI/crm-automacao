@@ -1,255 +1,234 @@
 import { useState, useEffect } from "react";
-import { Box, Typography, Grid, Paper, Divider, Stack } from "@mui/material";
 import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Legend,
-  Tooltip,
+  Box,
+  Typography,
+  Grid,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Modal,
+  IconButton,
+  Divider,
+  Stack,
+} from "@mui/material";
+import {
   BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  LabelList,
 } from "recharts";
-import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import CloseIcon from "@mui/icons-material/Close";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import QueryStatsIcon from "@mui/icons-material/QueryStats";
 
 function Metricas() {
-  const [dadosGrafico, setDadosGrafico] = useState([]);
+  const [dadosFunil, setDadosFunil] = useState([]);
+  const [vendasFiltradas, setVendasFiltradas] = useState([]);
+  const [statusSelecionado, setStatusSelecionado] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
   const [stats, setStats] = useState({
-    totalLeads: 0,
-    faturamentoTotal: 0,
+    faturamentoReal: 0,
+    faturamentoPrevisto: 0,
     taxaConversao: 0,
   });
 
-  useEffect(() => {
-    const clientes = JSON.parse(localStorage.getItem("crm_clientes") || "[]");
-    const vendas = JSON.parse(localStorage.getItem("crm_vendas") || "[]");
+  const COLORS = ["#9e9e9e", "#1976d2", "#0288d1", "#ed6c02", "#2e7d32", "#d32f2f"];
 
-    const contagemOrigens = clientes.reduce((acc, curr) => {
-      const origem = curr.origem || "Não Informado";
-      acc[origem] = (acc[origem] || 0) + 1;
+  useEffect(() => {
+    const vendas = JSON.parse(localStorage.getItem("crm_vendas") || "[]");
+    const ordemFunil = ["Lead", "Negociação", "Orçamento Enviado", "Aguardando Pagamento", "Finalizada", "Perdida"];
+
+    const contagemStatus = vendas.reduce((acc, v) => {
+      acc[v.status] = (acc[v.status] || 0) + 1;
       return acc;
     }, {});
 
-    const formatado = Object.keys(contagemOrigens).map((key) => ({
-      name: key,
-      value: contagemOrigens[key],
+    const formatadoFunil = ordemFunil.map((status) => ({
+      name: status,
+      quantidade: contagemStatus[status] || 0,
     }));
 
-    const fechadas = vendas.filter((v) => v.status === "Fechado");
-    const faturamento = fechadas.reduce((acc, v) => acc + Number(v.valor), 0);
-    const conversao =
-      clientes.length > 0
-        ? ((fechadas.length / clientes.length) * 100).toFixed(1)
-        : 0;
+    const real = vendas.filter((v) => v.status === "Finalizada").reduce((acc, v) => acc + Number(v.valor), 0);
+    const previsto = vendas.filter((v) => ["Negociação", "Orçamento Enviado", "Aguardando Pagamento"].includes(v.status)).reduce((acc, v) => acc + Number(v.valor), 0);
+    const totalNegocios = vendas.filter((v) => v.status !== "Lead").length;
+    const finalizadas = vendas.filter((v) => v.status === "Finalizada").length;
+    const conversao = totalNegocios > 0 ? ((finalizadas / totalNegocios) * 100).toFixed(1) : 0;
 
-    setDadosGrafico(formatado);
-    setStats({
-      totalLeads: clientes.length,
-      faturamentoTotal: faturamento,
-      taxaConversao: conversao,
-    });
+    setDadosFunil(formatadoFunil);
+    setStats({ faturamentoReal: real, faturamentoPrevisto: previsto, taxaConversao: conversao });
   }, []);
 
-  const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+  const handleBarClick = (data) => {
+    const statusNome = data.name || (data.payload && data.payload.name);
+    if (!statusNome) return;
+
+    const todasVendas = JSON.parse(localStorage.getItem("crm_vendas") || "[]");
+    const filtradas = todasVendas.filter((v) => v.status === statusNome);
+
+    setVendasFiltradas(filtradas);
+    setStatusSelecionado(statusNome);
+    setModalOpen(true);
+  };
 
   return (
     <Box sx={{ p: 1 }}>
-      <Typography
-        variant="h5"
-        sx={{ mb: 3, fontWeight: 800, color: "#1e293b" }}
-      >
-        Análise de Desempenho 📈
+      {/* CSS HACK PARA REMOVER CONTORNOS EM TODO O GRÁFICO */}
+      <style>
+        {`
+          .recharts-wrapper, .recharts-surface, .recharts-rectangle, .recharts-text {
+            outline: none !important;
+            box-shadow: none !important;
+            -webkit-tap-highlight-color: transparent;
+          }
+          path:focus {
+            outline: none !important;
+          }
+        `}
+      </style>
+
+      <Typography variant="h4" sx={{ mb: 4, fontWeight: 800, color: "#1e293b" }}>
+        Business Intelligence 📊
       </Typography>
 
-      {/* SEÇÃO DE MINI CARDS */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        {[
-          {
-            label: "Total de Leads",
-            val: stats.totalLeads,
-            icon: <PeopleAltIcon />,
-            color: "#6366f1",
-          },
-          {
-            label: "Faturamento",
-            val: `R$ ${stats.faturamentoTotal.toLocaleString("pt-BR")}`,
-            icon: <AccountBalanceWalletIcon />,
-            color: "#10b981",
-          },
-          {
-            label: "Conversão",
-            val: `${stats.taxaConversao}%`,
-            icon: <TrendingUpIcon />,
-            color: "#f59e0b",
-          },
-        ].map((item, index) => (
-          <Grid item xs={12} md={4} key={index}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                borderRadius: 4,
-                border: "1px solid #e2e8f0",
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-              }}
-            >
-              <Box
-                sx={{
-                  bgcolor: `${item.color}15`,
-                  p: 1.5,
-                  borderRadius: 3,
-                  display: "flex",
-                  color: item.color,
-                }}
-              >
-                {item.icon}
-              </Box>
-              <Box>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: "#64748b",
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  {item.label}
-                </Typography>
-                <Typography
-                  variant="h5"
-                  sx={{ fontWeight: 800, color: "#1e293b" }}
-                >
-                  {item.val}
-                </Typography>
-              </Box>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
-
-      <Grid container spacing={3}>
-        {/* GRÁFICO DE PIZZA (DONUT) */}
-        {/* Mudamos para md={12} (ocupa a tela toda em notes) e lg={6} (metade em desktops) */}
-        <Grid item xs={12} md={12} lg={6}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              borderRadius: 4,
-              border: "1px solid #e2e8f0",
-              height: 450,
-              display: "flex",
-              flexDirection: "column",
-              // SOLUÇÃO DO CORTE: Garante um espaço mínimo para o círculo não esmagar
-              minWidth: { xs: "100%", sm: "350px" },
-              overflow: "hidden", // Previne qualquer vazamento visual
-            }}
-          >
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-              Fontes de Aquisição
-            </Typography>
-
-            {/* Container wrapper para o gráfico */}
-            <Box
-              sx={{
-                flexGrow: 1,
-                width: "100%",
-                height: "100%",
-                position: "relative",
-              }}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={dadosGrafico}
-                    cx="50%" // Centraliza estritamente no meio X
-                    cy="50%" // Centraliza estritamente no meio Y
-                    innerRadius={70}
-                    // Reduzi um pouco mais o raio externo para garantir respiro lateral
-                    outerRadius={90}
-                    paddingAngle={8}
-                    dataKey="value"
-                  >
-                    {dadosGrafico.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                        stroke="none"
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip cornerRadius={8} />
-                  {/* Legenda na parte inferior para não brigar com as laterais */}
-                  <Legend
-                    iconType="circle"
-                    verticalAlign="bottom"
-                    wrapperStyle={{ paddingTop: "20px" }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+        <Grid item xs={12} md={4}>
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 2 }}>
+            <Box sx={{ bgcolor: "#2e7d3215", p: 1.5, borderRadius: 3, color: "#2e7d32" }}><AccountBalanceWalletIcon /></Box>
+            <Box>
+              <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700 }}>FATURAMENTO REAL</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>R$ {stats.faturamentoReal.toLocaleString("pt-BR")}</Typography>
             </Box>
           </Paper>
         </Grid>
+        <Grid item xs={12} md={4}>
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 2 }}>
+            <Box sx={{ bgcolor: "#1976d215", p: 1.5, borderRadius: 3, color: "#1976d2" }}><QueryStatsIcon /></Box>
+            <Box>
+              <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700 }}>EM NEGOCIAÇÃO</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>R$ {stats.faturamentoPrevisto.toLocaleString("pt-BR")}</Typography>
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 2 }}>
+            <Box sx={{ bgcolor: "#ed6c0215", p: 1.5, borderRadius: 3, color: "#ed6c02" }}><TrendingUpIcon /></Box>
+            <Box>
+              <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700 }}>TAXA DE CONVERSÃO</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>{stats.taxaConversao}%</Typography>
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
 
-        {/* GRÁFICO DE BARRAS */}
-        {/* Acompanha a mesma lógica de quebra de layout */}
-        <Grid item xs={12} md={12} lg={6}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              borderRadius: 4,
-              border: "1px solid #e2e8f0",
-              height: 450,
-              // Também garantimos um minWidth para os nomes do eixo X não encavalarem
-              minWidth: { xs: "100%", sm: "350px" },
-            }}
-          >
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 3 }}>
-              Volume por Canal
-            </Typography>
-            <ResponsiveContainer width="100%" height="85%">
-              {/* Aumentei a margem direita para a última barra não encostar */}
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <Paper elevation={0} sx={{ p: 4, borderRadius: 4, border: "1px solid #e2e8f0", height: 500 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Saúde do Funil de Vendas</Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary", mb: 4 }}>Clique nas barras para detalhes.</Typography>
+
+            <ResponsiveContainer width="100%" height="90%">
               <BarChart
-                data={dadosGrafico}
-                margin={{ top: 10, right: 30, left: -20, bottom: 0 }}
+                layout="vertical"
+                data={dadosFunil}
+                margin={{ top: 20, right: 60, left: 20, bottom: 20 }}
+                style={{ outline: "none" }}
               >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#f1f5f9"
-                />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#64748b", fontSize: 12 }}
-                />
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                <XAxis type="number" hide />
                 <YAxis
+                  dataKey="name"
+                  type="category"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#64748b", fontSize: 12 }}
+                  width={150}
+                  tick={{ fill: "#334155", fontWeight: 700, fontSize: 14, textAnchor: "start" }}
+                  dx={-140}
                 />
-                <Tooltip cursor={{ fill: "#f8fafc" }} />
-                <Bar
-                  dataKey="value"
-                  fill="#6366f1"
-                  radius={[6, 6, 0, 0]}
+                <Tooltip cursor={{ fill: "#f1f5f9", radius: 10 }} pointerEvents="none" />
+
+                <Bar 
+                  dataKey="quantidade" 
+                  radius={[0, 12, 12, 0]} 
                   barSize={40}
-                />
+                  activeBar={false}
+                  isAnimationActive={false} // Desativa animação para evitar re-foco do navegador
+                >
+                  {dadosFunil.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                      onClick={() => handleBarClick(entry)}
+                      style={{ outline: "none", cursor: "pointer", strokeWidth: 0 }}
+                    />
+                  ))}
+                  <LabelList
+                    dataKey="quantidade"
+                    position="right"
+                    style={{ fill: "#475569", fontWeight: 800, fontSize: 16, cursor: "pointer", outline: 'none' }}
+                    offset={15}
+                    onClick={(data) => handleBarClick(data)}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </Paper>
         </Grid>
       </Grid>
+
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
+        <Box sx={{
+          position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+          width: { xs: "95%", md: 750 }, bgcolor: "white", borderRadius: 4, p: 4, boxShadow: 24,
+          maxHeight: "80vh", overflowY: "auto",
+        }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Typography variant="h6" fontWeight={800}>Status: {statusSelecionado}</Typography>
+            <IconButton onClick={() => setModalOpen(false)}><CloseIcon /></IconButton>
+          </Box>
+          <Divider sx={{ mb: 3 }} />
+          <TableContainer component={Paper} elevation={0} sx={{ border: "1px solid #e2e8f0", borderRadius: 3 }}>
+            <Table size="medium">
+              <TableHead sx={{ bgcolor: "#f8fafc" }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700 }}>Cliente</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Serviço</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>Valor</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {vendasFiltradas.length > 0 ? (
+                  vendasFiltradas.map((v) => (
+                    <TableRow key={v.id} hover>
+                      <TableCell sx={{ fontWeight: 500 }}>{v.cliente}</TableCell>
+                      <TableCell>{v.servico}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, color: "#2e7d32" }}>
+                        R$ {Number(v.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow><TableCell colSpan={3} align="center" sx={{ py: 4, color: "text.secondary" }}>Vazio.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <Box sx={{ mt: 3, textAlign: "right" }}>
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+              Total: <strong>R$ {vendasFiltradas.reduce((acc, v) => acc + Number(v.valor), 0).toLocaleString("pt-BR")}</strong>
+            </Typography>
+          </Box>
+        </Box>
+      </Modal>
     </Box>
   );
 }
